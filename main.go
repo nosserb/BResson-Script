@@ -3,24 +3,59 @@ package main
 import (
     "bufio"
     "fmt"
-    "log"
     "os"
+    "path/filepath"
     "strings"
 )
 
 var variables = make(map[string]string)
 
-func executeLine(line string) {
+func replaceVars(s string) string {
+    for k, v := range variables {
+        s = strings.ReplaceAll(s, k, v)
+    }
+    return s
+}
+
+func findFile(name string) string {
+    var result string
+    filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+        if err != nil {
+            return nil
+        }
+        if !info.IsDir() && info.Name() == name {
+            result = path
+            return filepath.SkipDir
+        }
+        return nil
+    })
+    return result
+}
+
+func runLine(line string) {
     line = strings.TrimSpace(line)
     if line == "" || strings.HasPrefix(line, "#") {
-        return 
+        return
     }
 
     if strings.HasPrefix(line, "bprint") {
-        content := strings.TrimPrefix(line, "bprint(")
-        content = strings.TrimSuffix(content, ")")
-        content = strings.Trim(content, "\"")
-        fmt.Println(content)
+        s := strings.TrimPrefix(line, "bprint(")
+        s = strings.TrimSuffix(s, ")")
+        s = strings.Trim(s, "\"")
+        s = replaceVars(s)
+        fmt.Println(s)
+        return
+    }
+
+    if strings.HasPrefix(line, "bfile") {
+        name := strings.TrimPrefix(line, "bfile(")
+        name = strings.Trim(name, "\"")
+        path := findFile(name)
+        if path == "" {
+            fmt.Println("Fichier introuvable :", name)
+        } else {
+            fmt.Println("Fichier trouvé :", path)
+        }
         return
     }
 
@@ -32,27 +67,25 @@ func executeLine(line string) {
         return
     }
 
-    fmt.Println("Instruction non reconnue:", line)
+    fmt.Println("Instruction inconnue :", line)
 }
 
 func main() {
     if len(os.Args) < 2 {
-        log.Fatal("Usage: go run main.go fichier.brs")
+        fmt.Println("Usage: go run main.go fichier.brs")
+        return
     }
 
     file := os.Args[1]
     f, err := os.Open(file)
     if err != nil {
-        log.Fatal(err)
+        fmt.Println("Erreur ouverture :", err)
+        return
     }
     defer f.Close()
 
     scanner := bufio.NewScanner(f)
     for scanner.Scan() {
-        executeLine(scanner.Text())
-    }
-
-    if err := scanner.Err(); err != nil {
-        log.Fatal(err)
+        runLine(scanner.Text())
     }
 }
