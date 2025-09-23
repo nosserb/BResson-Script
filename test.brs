@@ -1,4 +1,13 @@
-# Exemple Bresson
-x: int = 42
-bprint("Hello Bresson!")
+# Déclaration de variables
+x = 42
+name = "Guy"
+
+# Affichage de texte simple
+bprint("Hello World!")
+
+# Affichage avec variables
 bprint("x vaut " + x)
+bprint("Salut " + name)
+
+# Chercher un fichier dans les sous-dossiers
+bfile("autre_script.brs")
