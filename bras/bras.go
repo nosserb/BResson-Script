@@ -12,7 +12,7 @@ func main() {
         return
     }
     file := os.Args[1]
-    cmd := exec.Command("go", "run", "/Users/admin/BResson-Script/main.go", file)
+    cmd := exec.Command("go", "run", "C:/Users/admin/BResson-Script/main.go", file)
     cmd.Stdout = os.Stdout
     cmd.Stderr = os.Stderr
     err := cmd.Run()
