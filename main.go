@@ -22,8 +22,11 @@ func evalString(s string) string {
     result := ""
     for _, p := range parts {
         p = strings.TrimSpace(p)
-        p = strings.ReplaceAll(p, "\"", "")
-        p = replaceVars(p)
+        if strings.HasPrefix(p, "\"") && strings.HasSuffix(p, "\"") {
+            p = strings.Trim(p, "\"")
+        } else {
+            p = replaceVars(p)
+        }
         result += p
     }
     return result
@@ -67,7 +70,43 @@ func runLine(line string) {
         if path == "" {
             fmt.Println("Fichier introuvable :", name)
         } else {
-            fmt.Println("Fichier trouvé :", path)
+            fmt.Println(path)
+        }
+        return
+    }
+
+    if strings.HasPrefix(line, "bstartfile") {
+        arg := strings.TrimPrefix(line, "bstartfile(")
+        arg = strings.TrimSuffix(arg, ")")
+        arg = strings.TrimSpace(arg)
+
+        if strings.HasPrefix(arg, "'") && strings.HasSuffix(arg, "'") {
+            arg = strings.Trim(arg, "'")
+            arg = strings.TrimSpace(arg)
+            if strings.HasPrefix(arg, "bfile") {
+                inner := strings.TrimPrefix(arg, "bfile(")
+                inner = strings.TrimSuffix(inner, ")")
+                inner = evalString(inner)
+                arg = findFile(inner)
+            } else {
+                arg = evalString(arg)
+            }
+        }
+
+        if arg == "" {
+            fmt.Println("Fichier introuvable")
+            return
+        }
+
+        f, err := os.Open(arg)
+        if err != nil {
+            fmt.Println("Erreur ouverture :", err)
+            return
+        }
+        defer f.Close()
+        scanner := bufio.NewScanner(f)
+        for scanner.Scan() {
+            runLine(scanner.Text())
         }
         return
     }

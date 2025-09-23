@@ -1,13 +1,5 @@
-# Déclaration de variables
-x = 42
-name = "Guy"
+name = "guy"
 
-# Affichage de texte simple
-bprint("Hello World!")
-
-# Affichage avec variables
-bprint("x vaut " + x)
-bprint("Salut " + name)
-
-# Chercher un fichier n'importe ou
-bfile("file.brs")
+bprint("Début du script principal")
+bstartfile('bfile(name + ".brs")')
+bprint("Fin du script principal")
