@@ -22,7 +22,7 @@ func evalString(s string) string {
     result := ""
     for _, p := range parts {
         p = strings.TrimSpace(p)
-        p = strings.Trim(p, "\"")
+        p = strings.ReplaceAll(p, "\"", "") // enlève tous les guillemets
         p = replaceVars(p)
         result += p
     }
@@ -37,7 +37,7 @@ func findFile(name string) string {
         }
         if !info.IsDir() && strings.EqualFold(info.Name(), name) {
             result = path
-            return fmt.Errorf("trouvé") // arrête le walk
+            return fmt.Errorf("trouvé") // stoppe le walk dès qu'on trouve
         }
         return nil
     })
@@ -59,7 +59,9 @@ func runLine(line string) {
 
     if strings.HasPrefix(line, "bfile") {
         name := strings.TrimPrefix(line, "bfile(")
+        name = strings.TrimSpace(name)
         name = strings.Trim(name, "\"")
+        name = strings.TrimSuffix(name, ")")
         path := findFile(name)
         if path == "" {
             fmt.Println("Fichier introuvable :", name)
