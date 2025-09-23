@@ -9,5 +9,5 @@ bprint("Hello World!")
 bprint("x vaut " + x)
 bprint("Salut " + name)
 
-# Chercher un fichier dans les sous-dossiers
+# Chercher un fichier n'importe ou
 bfile("file.brs")
