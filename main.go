@@ -60,8 +60,8 @@ func runLine(line string) {
     if strings.HasPrefix(line, "bfile") {
         name := strings.TrimPrefix(line, "bfile(")
         name = strings.TrimSpace(name)
-        name = strings.Trim(name, "\"")
-        name = strings.TrimSuffix(name, ")")
+        name = strings.Trim(name, "\"")       // enlève les guillemets
+        name = strings.TrimSuffix(name, ")")  // enlève la parenthèse finale
         path := findFile(name)
         if path == "" {
             fmt.Println("Fichier introuvable :", name)
@@ -75,6 +75,7 @@ func runLine(line string) {
         parts := strings.Split(line, "=")
         key := strings.TrimSpace(parts[0])
         value := strings.TrimSpace(parts[1])
+        value = strings.Trim(value, "\"") // enlève les guillemets dans la valeur
         variables[key] = value
         return
     }
