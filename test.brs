@@ -10,4 +10,4 @@ bprint("x vaut " + x)
 bprint("Salut " + name)
 
 # Chercher un fichier dans les sous-dossiers
-bfile("autre_script.brs")
+bfile("file.brs")

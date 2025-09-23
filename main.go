@@ -17,15 +17,27 @@ func replaceVars(s string) string {
     return s
 }
 
+func evalString(s string) string {
+    parts := strings.Split(s, "+")
+    result := ""
+    for _, p := range parts {
+        p = strings.TrimSpace(p)
+        p = strings.Trim(p, "\"")
+        p = replaceVars(p)
+        result += p
+    }
+    return result
+}
+
 func findFile(name string) string {
     var result string
     filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
         if err != nil {
             return nil
         }
-        if !info.IsDir() && info.Name() == name {
+        if !info.IsDir() && strings.EqualFold(info.Name(), name) {
             result = path
-            return filepath.SkipDir
+            return fmt.Errorf("trouvé") // arrête le walk
         }
         return nil
     })
@@ -41,9 +53,7 @@ func runLine(line string) {
     if strings.HasPrefix(line, "bprint") {
         s := strings.TrimPrefix(line, "bprint(")
         s = strings.TrimSuffix(s, ")")
-        s = strings.Trim(s, "\"")
-        s = replaceVars(s)
-        fmt.Println(s)
+        fmt.Println(evalString(s))
         return
     }
 
