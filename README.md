@@ -36,9 +36,105 @@ belse
 
 # liste de fonction
 
-- bfile() -
+### - bfile() 
 
 ```
 bfile("nom_fichier")
 ```
 vas rechercher le fichier depuis la racine ou est executer la commande
+
+---
+
+### - bprint()
+
+```
+bprint("Bonjour le monde!")
+bprint("Valeur: " + maVariable)
+```
+Affiche du texte à l'écran avec support des couleurs
+
+---
+
+### - binput() -> variable
+
+```
+binput("Entrez votre nom: ") -> nom
+bprint("Bonjour " + nom)
+```
+Demande une saisie utilisateur et stocke le résultat dans une variable
+
+---
+
+### - variable = valeur
+
+```
+nom = "Jean"
+age = "25"
+```
+Assigne une valeur à une variable
+
+---
+
+### - bcalc() -> variable
+
+```
+bcalc(5 + 3) -> resultat
+bcalc(10 * 2) -> produit
+```
+Effectue des calculs mathématiques (addition, multiplication)
+
+---
+
+### - bread()
+
+```
+bread("config.txt")
+contenu = _bread
+```
+Lit le contenu d'un fichier et le stocke dans `_bread` (variable)
+
+---
+
+### - bwrite()
+
+```
+bwrite("output.txt", "Mon contenu")
+```
+Écrit du contenu dans un fichier
+
+---
+
+### - brename()
+
+```
+brename("old.txt", "new.txt")
+```
+Renomme un fichier
+
+---
+
+### - bif()
+
+```
+bif(nom == "Jean")
+    bprint("Bonjour Jean!")
+|
+```
+Condition bif - exécute le bloc si la condition est vraie
+
+---
+
+### - belse
+
+```
+bif(age >= "18")
+    bprint("Majeur")
+belse
+    bprint("Mineur")
+|
+```
+Bloc belse - s'exécute si la condition bif est fausse
+
+---
+
+### - 
