@@ -12,7 +12,12 @@ Bresson Script (abrégé **BRS**) est un langage de script léger conçu pour fa
 git clone https://github.com/nosserb/BResson-Script.git
 cd Bresson-Script
 ```
+2. sur linux :
 
+### Execute les commandes :
+
+## exemple
+```
 bprint("Bienvenue dans le jeu de devinette !")
 binput("Comment tu t'appelles ?") -> 'nom'
 
@@ -27,12 +32,13 @@ bif('guess' == 'nombreMystere')
 belse
     bprint("Dommage ! Le nombre était "  'nombreMystere')
 |
+```
 
-
->>> liste de fonction
+# liste de fonction
 
 - bfile() -
->>>
-bfile("nom_fichier")
 
+```
+bfile("nom_fichier")
+```
 vas rechercher le fichier depuis la racine ou est executer la commande
