@@ -21,6 +21,14 @@ var currentColor = "" // Added color state
 
 var cmdArgs []string
 
+func extractVarName(line string) string {
+    parts := strings.Split(line, "->")
+    if len(parts) < 2 {
+        return ""
+    }
+    return strings.TrimSpace(parts[1])
+}
+
 func replaceVars(s string) string {
 	for k, v := range variables {
 		s = strings.ReplaceAll(s, k, v)
@@ -203,32 +211,30 @@ func runLine(line string) {
 	}
 
 	if strings.HasPrefix(line, "binput") {
-		prompt := strings.TrimPrefix(line, "binput")
-		prompt = strings.Trim(prompt, "()")
-		prompt = strings.Trim(prompt, "\"")
-		prompt = replaceVars(prompt)
-		
-		fmt.Print(prompt)
-		reader := bufio.NewReader(os.Stdin)
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-		variables["_binput"] = input
-		return
-	}
+    // Lire l'entrée utilisateur
+    input := ""
+    fmt.Print(line[6:] + " ") // affiche le message sans binput
+    fmt.Scanln(&input)
+
+    // Stocker dans une variable si -> nom est présent
+    varName := extractVarName(line)
+    if varName != "" {
+        variables[varName] = input
+    }
+}
+
 
 	if strings.HasPrefix(line, "bcalc") {
-		expr := strings.TrimPrefix(line, "bcalc")
-		expr = strings.Trim(expr, "()")
-		expr = strings.Trim(expr, "\"")
-		expr = replaceVars(expr)
-		
-		result, err := evaluateMath(expr)
-		if err == nil {
-			variables["_bcalc"] = fmt.Sprintf("%.0f", result)
-			fmt.Printf("Calcul: %s = %.0f\n", expr, result)
-		}
-		return
-	}
+    expr := strings.TrimSpace(line[5:])
+    result, _ := evaluateMath(expr)  // récupère le résultat et ignore l'erreur
+    varName := extractVarName(line)
+    if varName != "" {
+        variables[varName] = fmt.Sprintf("%v", result) // convertit en string
+    }
+}
+
+}
+
 
 	if strings.HasPrefix(line, "bread") {
 		filename := strings.TrimPrefix(line, "bread")

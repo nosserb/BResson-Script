@@ -1,32 +1,14 @@
-player = "Guy"
-brand(1 10)
-secret = _brand
+bprint("Bienvenue dans le jeu de devinette !")
+binput("Comment tu t'appelles ?") -> nom
 
-bprint("Salut " + player + "! Devine le nombre entre 1 et 10.")
+bprint("Salut " + nom + "! Je pense à un nombre entre 1 et 10...")
 
-bif(player == "Guy")
-    guess = "5"
-    bif(guess == secret)
-        bprint("Bravo, tu as trouvé du premier coup!")
-        bstartfile("celebration.brs")
-    belse
-        bprint("Raté! Essaie encore.")
-        guess = "7"
-        bif(guess == secret)
-            bprint("Bien joué au deuxième essai!")
-        belse
-            guess = "3"
-            bif(guess == secret)
-                bprint("Enfin, tu as trouvé!")
-            belse
-                bprint("Désolé, tu as perdu. Le nombre était " + secret)
-            |
-        |
-    |
+bcalc(rand(1,10)) -> nombreMystere
+
+binput("Devine le nombre :") -> guess
+
+bif(guess == nombreMystere)
+    bprint("Bravo ! Tu as trouvé ! 🎉")
+belse
+    bprint("Dommage ! Le nombre était " + nombreMystere)
 |
-
-btime("j m a h min s")
-logtime = _btime
-
-brename("log.txt" "log_" + player + ".txt")
-bprint("Le jeu a été joué le " + logtime)
