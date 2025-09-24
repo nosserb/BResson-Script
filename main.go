@@ -211,30 +211,32 @@ func runLine(line string) {
 	}
 
 	if strings.HasPrefix(line, "binput") {
-    // Lire l'entrée utilisateur
-    input := ""
-    fmt.Print(line[6:] + " ") // affiche le message sans binput
-    fmt.Scanln(&input)
+    	parts := strings.Split(line, "->")
+    	prompt := strings.TrimSpace(parts[0][6:])      // tout après 'binput'
+    	prompt = strings.Trim(prompt, `()"`)          // supprime () et ""
+    	varName := ""
+    	if len(parts) > 1 {
+        	varName = strings.TrimSpace(parts[1])
+    	}
 
-    // Stocker dans une variable si -> nom est présent
-    varName := extractVarName(line)
-    if varName != "" {
-        variables[varName] = input
-    }
-}
+    	fmt.Print(prompt + " ")
+    	var input string
+    	fmt.Scanln(&input)
 
+    	if varName != "" {
+        	variables[varName] = input
+    	}
+	}
 
 	if strings.HasPrefix(line, "bcalc") {
-    expr := strings.TrimSpace(line[5:])
-    result, _ := evaluateMath(expr)  // récupère le résultat et ignore l'erreur
-    varName := extractVarName(line)
-    if varName != "" {
-        variables[varName] = fmt.Sprintf("%v", result) // convertit en string
-    }
-}
-
-}
-
+		expr := strings.TrimSpace(line[5:])
+		result, _ := evaluateMath(expr)  // récupère le résultat et ignore l'erreur
+		varName := extractVarName(line)
+		if varName != "" {
+			variables[varName] = fmt.Sprintf("%v", result) // convertit en string
+		}
+		return
+	}
 
 	if strings.HasPrefix(line, "bread") {
 		filename := strings.TrimPrefix(line, "bread")
@@ -330,14 +332,20 @@ func runLine(line string) {
 	}
 
 	if strings.HasPrefix(line, "bprint") {
-		s := strings.TrimPrefix(line, "bprint")
-		s = strings.TrimSpace(s)
-		s = strings.TrimPrefix(s, "(")
-		s = strings.TrimSuffix(s, ")")
-		s = parseStringExpression(s)
-		printWithColor(s) // Use color printing
-		return
+    	s := strings.TrimPrefix(line, "bprint")
+    	s = strings.TrimSpace(s)
+    	s = strings.Trim(s, `()"`)      // supprime () et "
+    	s = parseStringExpression(s)
+
+    // remplacer toutes les variables
+    	for k, v := range variables {
+    		s = strings.ReplaceAll(s, "'"+k+"'", v)
+		}
+
+    	printWithColor(s)
+    	return
 	}
+
 
 	if strings.HasPrefix(line, "bfile") {
 		name := strings.TrimPrefix(line, "bfile")
@@ -461,7 +469,6 @@ func runLine(line string) {
 		return
 	}
 
-	fmt.Println("Instruction inconnue :", line)
 }
 
 func main() {
