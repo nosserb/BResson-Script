@@ -27,3 +27,12 @@ bif('guess' == 'nombreMystere')
 belse
     bprint("Dommage ! Le nombre était "  'nombreMystere')
 |
+
+
+>>> liste de fonction
+
+- bfile() -
+>>>
+bfile("nom_fichier")
+
+vas rechercher le fichier depuis la racine ou est executer la commande
