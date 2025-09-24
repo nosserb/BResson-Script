@@ -1,6 +1,6 @@
 # Bresson Script (BRS)
 
-Bresson Script (abrégé **BRS**) est un langage de script léger conçu pour faciliter l’écriture rapide de scripts en ligne de commande. Inspiré par un projet personnel, il combine la simplicité d’utilisation avec la puissance de Go pour exécuter des scripts, manipuler des fichiers, générer des nombres aléatoires et gérer le temps.
+**Bresson** est un langage de programmation interprété conçu pour la simplicité et la lisibilité. Inspiré par une approche minimaliste, il privilégie la clarté du code et la facilité d'apprentissage tout en offrant les fonctionnalités essentielles pour le développement d'applications.
 
 ---
 
