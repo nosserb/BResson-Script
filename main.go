@@ -13,20 +13,20 @@ import (
 )
 
 var variables = make(map[string]string)
-var blockStack []bool // Track if current block should execute
-var arrays = make(map[string][]string) // Added array storage
+var blockStack []bool                     // Track if current block should execute
+var arrays = make(map[string][]string)    // Added array storage
 var functions = make(map[string][]string) // Added function storage
-var timers = make(map[string]time.Time) // Added timer storage
-var currentColor = "" // Added color state
+var timers = make(map[string]time.Time)   // Added timer storage
+var currentColor = ""                     // Added color state
 
 var cmdArgs []string
 
 func extractVarName(line string) string {
-    parts := strings.Split(line, "->")
-    if len(parts) < 2 {
-        return ""
-    }
-    return strings.TrimSpace(parts[1])
+	parts := strings.Split(line, "->")
+	if len(parts) < 2 {
+		return ""
+	}
+	return strings.TrimSpace(parts[1])
 }
 
 func replaceVars(s string) string {
@@ -41,7 +41,7 @@ func parseStringExpression(expr string) string {
 	if !strings.Contains(expr, "+") {
 		return replaceVars(strings.Trim(expr, "\""))
 	}
-	
+
 	parts := strings.Split(expr, "+")
 	result := ""
 	for _, part := range parts {
@@ -150,7 +150,7 @@ func runLine(line string) {
 	if strings.HasPrefix(line, "bwhile") {
 		cond := strings.TrimPrefix(line, "bwhile")
 		cond = strings.Trim(cond, "() ")
-		
+
 		shouldExecBlock := false
 		if strings.Contains(cond, "<=") {
 			parts := strings.Split(cond, "<=")
@@ -171,7 +171,7 @@ func runLine(line string) {
 	if strings.HasPrefix(line, "bif") {
 		cond := strings.TrimPrefix(line, "bif")
 		cond = strings.Trim(cond, "() ")
-		
+
 		shouldExecBlock := false
 		if strings.Contains(cond, "==") {
 			parts := strings.Split(cond, "==")
@@ -211,26 +211,26 @@ func runLine(line string) {
 	}
 
 	if strings.HasPrefix(line, "binput") {
-    	parts := strings.Split(line, "->")
-    	prompt := strings.TrimSpace(parts[0][6:])      // tout après 'binput'
-    	prompt = strings.Trim(prompt, `()"`)          // supprime () et ""
-    	varName := ""
-    	if len(parts) > 1 {
-        	varName = strings.TrimSpace(parts[1])
-    	}
+		parts := strings.Split(line, "->")
+		prompt := strings.TrimSpace(parts[0][6:]) // tout après 'binput'
+		prompt = strings.Trim(prompt, `()"`)      // supprime () et ""
+		varName := ""
+		if len(parts) > 1 {
+			varName = strings.TrimSpace(parts[1])
+		}
 
-    	fmt.Print(prompt + " ")
-    	var input string
-    	fmt.Scanln(&input)
+		fmt.Print(prompt + " ")
+		var input string
+		fmt.Scanln(&input)
 
-    	if varName != "" {
-        	variables[varName] = input
-    	}
+		if varName != "" {
+			variables[varName] = input
+		}
 	}
 
 	if strings.HasPrefix(line, "bcalc") {
 		expr := strings.TrimSpace(line[5:])
-		result, _ := evaluateMath(expr)  // récupère le résultat et ignore l'erreur
+		result, _ := evaluateMath(expr) // récupère le résultat et ignore l'erreur
 		varName := extractVarName(line)
 		if varName != "" {
 			variables[varName] = fmt.Sprintf("%v", result) // convertit en string
@@ -243,7 +243,7 @@ func runLine(line string) {
 		filename = strings.Trim(filename, "()")
 		filename = strings.Trim(filename, "\"")
 		filename = replaceVars(filename)
-		
+
 		content, err := ioutil.ReadFile(filename)
 		if err == nil {
 			variables["_bread"] = string(content)
@@ -257,7 +257,7 @@ func runLine(line string) {
 	if strings.HasPrefix(line, "bwrite") {
 		s := strings.TrimPrefix(line, "bwrite")
 		s = strings.Trim(s, "() ")
-		
+
 		parts := []string{}
 		inQuotes := false
 		current := ""
@@ -274,7 +274,7 @@ func runLine(line string) {
 				current += string(char)
 			}
 		}
-		
+
 		if len(parts) == 2 {
 			filename := replaceVars(parts[0])
 			content := replaceVars(parts[1])
@@ -332,20 +332,19 @@ func runLine(line string) {
 	}
 
 	if strings.HasPrefix(line, "bprint") {
-    	s := strings.TrimPrefix(line, "bprint")
-    	s = strings.TrimSpace(s)
-    	s = strings.Trim(s, `()"`)      // supprime () et "
-    	s = parseStringExpression(s)
+		s := strings.TrimPrefix(line, "bprint")
+		s = strings.TrimSpace(s)
+		s = strings.Trim(s, `()"`) // supprime () et "
+		s = parseStringExpression(s)
 
-    // remplacer toutes les variables
-    	for k, v := range variables {
-    		s = strings.ReplaceAll(s, "'"+k+"'", v)
+		// remplacer toutes les variables
+		for k, v := range variables {
+			s = strings.ReplaceAll(s, "'"+k+"'", v)
 		}
 
-    	printWithColor(s)
-    	return
+		printWithColor(s)
+		return
 	}
-
 
 	if strings.HasPrefix(line, "bfile") {
 		name := strings.TrimPrefix(line, "bfile")
@@ -435,7 +434,7 @@ func runLine(line string) {
 				current += string(char)
 			}
 		}
-		
+
 		if len(parts) == 2 {
 			oldName := replaceVars(parts[0])
 			newName := replaceVars(parts[1])
@@ -455,7 +454,7 @@ func runLine(line string) {
 		parts := strings.SplitN(line, "=", 2)
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
-		
+
 		if value == "_binput" || value == "_bcalc" || value == "_bread" || value == "_bard" {
 			if val, exists := variables[value]; exists {
 				variables[key] = val
