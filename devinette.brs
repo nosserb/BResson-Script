@@ -6,10 +6,11 @@ bprint("Salut " + 'nom' + "! Je pense à un nombre entre 1 et 10...")
 bcalc(rand(1,10)) -> 'nombreMystere'
 
 binput("Devine le nombre :") -> 'guess'
-bcolor("rouge")
+
 bif('guess' == 'nombreMystere')
     bcolor("vert")
     bprint("Bravo ! Tu as trouvé ! 🎉")
 belse
+    bcolor("rouge")
     bprint("Dommage ! Le nombre était "  'nombreMystere')
 |
