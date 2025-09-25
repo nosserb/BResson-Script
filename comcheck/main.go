@@ -6,8 +6,13 @@ import (
 )
 
 func main() {
-	for _, arg := range os.Args[1:] {
-		if arg == "01" || arg == "galaxy" || arg == "galaxy 01" {
+	if len(os.Args) != 6 {
+		return
+	}
+
+	for i := 1; i <= 5; i++ {
+		arg := os.Args[i]
+		if arg == "01" || arg == "galaxy 01" {
 			fmt.Println("Alert!!!")
 			return
 		}
