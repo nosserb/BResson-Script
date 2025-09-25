@@ -38,8 +38,6 @@ belse
 
 ---
 
-<br>
-
 # Liste de fonctions
 
 ---
@@ -214,7 +212,6 @@ Ligne de commentaire (ignorée à l'exécution)
 
 ---
 
-<br><br>
 # Conditions & Boucles
 
 ---
