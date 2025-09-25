@@ -34,7 +34,15 @@ belse
 |
 ```
 
+<br>
+
+---
+
+<br>
+
 # Liste de fonctions
+
+---
 
 ### - bfile() 
 
@@ -110,49 +118,6 @@ bwrite("output.txt", "Mon contenu")
 brename("old.txt", "new.txt")
 ```
 Renomme un fichier
-
----
-
-### - bif()
-
-```
-bif(nom == "Jean")
-    bprint("Bonjour Jean!")
-|
-```
-Exécute le bloc si la condition est vraie
-
----
-
-### - belse
-
-```
-bif(age >= "18")
-    bprint("Majeur")
-belse
-    bprint("Mineur")
-|
-```
-Exécute le bloc si la condition bif est fausse
-
----
-
-### - bwhile()
-
-```
-compteur = "1"
-bwhile(compteur <= 5)
-    bprint("Compteur: " + compteur)
-    bcalc(compteur + 1) -> compteur
-|
-```
-Répète le bloc tant que la condition est vraie
-
----
-
-### - " | "
-
-Ferme un bloc (if, else, while)
 
 ---
 
@@ -246,6 +211,53 @@ Indique l'exécution d'un fichier (affichage uniquement)
 bprint("Hello World")
 ```
 Ligne de commentaire (ignorée à l'exécution)
+
+---
+
+<br><br>
+# Conditions & Boucles
+
+---
+### - bif()
+
+```
+bif(nom == "Jean")
+    bprint("Bonjour Jean!")
+|
+```
+Exécute le bloc si la condition est vraie
+
+---
+
+### - belse
+
+```
+bif(age >= "18")
+    bprint("Majeur")
+belse
+    bprint("Mineur")
+|
+```
+Exécute le bloc si la condition bif est fausse
+
+---
+
+### - bwhile()
+
+```
+compteur = "1"
+bwhile(compteur <= 5)
+    bprint("Compteur: " + compteur)
+    bcalc(compteur + 1) -> compteur
+|
+```
+Répète le bloc tant que la condition est vraie
+
+---
+
+### - " | "
+
+Ferme un bloc (if, else, while)
 
 ---
 
