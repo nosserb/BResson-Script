@@ -34,14 +34,14 @@ belse
 |
 ```
 
-# liste de fonction
+# Liste de fonctions
 
 ### - bfile() 
 
 ```
 bfile("nom_fichier")
 ```
-vas rechercher le fichier depuis la racine ou est executer la commande
+Recherche le fichier depuis la racine où est exécutée la commande
 
 ---
 
@@ -120,7 +120,7 @@ bif(nom == "Jean")
     bprint("Bonjour Jean!")
 |
 ```
-Condition bif - exécute le bloc si la condition est vraie
+Exécute le bloc si la condition est vraie
 
 ---
 
@@ -133,7 +133,7 @@ belse
     bprint("Mineur")
 |
 ```
-Bloc belse - s'exécute si la condition bif est fausse
+Exécute le bloc si la condition bif est fausse
 
 ---
 
@@ -146,7 +146,7 @@ bwhile(compteur <= 5)
     bcalc(compteur + 1) -> compteur
 |
 ```
-Boucle while - répète tant que la condition est vraie
+Répète le bloc tant que la condition est vraie
 
 ---
 
@@ -249,7 +249,7 @@ Ligne de commentaire (ignorée à l'exécution)
 
 ---
 
-## VARIABLE SPECIAL
+## VARIABLES SPÉCIALES
 
 - `_bread` : Contient le contenu du dernier fichier lu
 - `_brand` : Contient le dernier nombre aléatoire généré
