@@ -14,3 +14,5 @@ belse
     bcolor("rouge")
     bprint("Dommage ! Le nombre était "  'nombreMystere')
 |
+
+bfile("")
