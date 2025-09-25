@@ -4,44 +4,16 @@
 
 ---
 
-## Installation
+# Liste de fonctions
 
-1. Clone le dépôt GitHub :
-
-```
-git clone https://github.com/nosserb/BResson-Script.git
-cd Bresson-Script
-```
-2. sur linux :
-
-### Execute les commandes :
-
-## exemple
-```
-bprint("Bienvenue dans le jeu de devinette !")
-binput("Comment tu t'appelles ?") -> 'nom'
-
-bprint("Salut " + 'nom' + "! Je pense à un nombre entre 1 et 10...")
-
-bcalc(rand(1,10)) -> 'nombreMystere'
-
-binput("Devine le nombre :") -> 'guess'
-
-bif('guess' == 'nombreMystere')
-    bprint("Bravo ! Tu as trouvé ! 🎉")
-belse
-    bprint("Dommage ! Le nombre était "  'nombreMystere')
-|
-```
-
-# liste de fonction
+---
 
 ### - bfile() 
 
 ```
 bfile("nom_fichier")
 ```
-vas rechercher le fichier depuis la racine ou est executer la commande
+Recherche le fichier depuis la racine où est exécutée la commande
 
 ---
 
@@ -110,49 +82,6 @@ bwrite("output.txt", "Mon contenu")
 brename("old.txt", "new.txt")
 ```
 Renomme un fichier
-
----
-
-### - bif()
-
-```
-bif(nom == "Jean")
-    bprint("Bonjour Jean!")
-|
-```
-Condition bif - exécute le bloc si la condition est vraie
-
----
-
-### - belse
-
-```
-bif(age >= "18")
-    bprint("Majeur")
-belse
-    bprint("Mineur")
-|
-```
-Bloc belse - s'exécute si la condition bif est fausse
-
----
-
-### - bwhile()
-
-```
-compteur = "1"
-bwhile(compteur <= 5)
-    bprint("Compteur: " + compteur)
-    bcalc(compteur + 1) -> compteur
-|
-```
-Boucle while - répète tant que la condition est vraie
-
----
-
-### - " | "
-
-Ferme un bloc (if, else, while)
 
 ---
 
@@ -249,7 +178,53 @@ Ligne de commentaire (ignorée à l'exécution)
 
 ---
 
-## VARIABLE SPECIAL
+# Conditions & Boucles
+
+---
+### - bif()
+
+```
+bif(nom == "Jean")
+    bprint("Bonjour Jean!")
+|
+```
+Exécute le bloc si la condition est vraie
+
+---
+
+### - belse
+
+```
+bif(age >= "18")
+    bprint("Majeur")
+belse
+    bprint("Mineur")
+|
+```
+Exécute le bloc si la condition bif est fausse
+
+---
+
+### - bwhile()
+
+```
+compteur = "1"
+bwhile(compteur <= 5)
+    bprint("Compteur: " + compteur)
+    bcalc(compteur + 1) -> compteur
+|
+```
+Répète le bloc tant que la condition est vraie
+
+---
+
+### - " | "
+
+Ferme un bloc (if, else, while)
+
+---
+
+## VARIABLES SPÉCIALES
 
 - `_bread` : Contient le contenu du dernier fichier lu
 - `_brand` : Contient le dernier nombre aléatoire généré
