@@ -14,7 +14,6 @@ NC='\033[0m' # No Color
 
 # Configuration
 INSTALL_DIR="/usr/local/bin"
-LIB_DIR="/usr/local/lib/bresson"
 VERSION="1.0.0"
 
 print_header() {
@@ -52,8 +51,8 @@ check_requirements() {
     print_success "Go version $GO_VERSION détectée"
     
     # Check if we have the required files
-    if [[ ! -f "bras.go" ]] || [[ ! -f "main.go" ]]; then
-        print_error "Fichiers source manquants (bras.go ou main.go)"
+    if [[ ! -f "bras.go" ]] || [[ ! -f "../main.go" ]]; then
+        print_error "Fichiers source manquants (bras.go ou ../main.go)"
         exit 1
     fi
     
@@ -73,7 +72,7 @@ build_binaries() {
     
     # Build the interpreter
     echo "  - Compilation de l'interpréteur..."
-    go build -o bresson main.go
+    go build -o bresson ../main.go
     if [[ $? -ne 0 ]]; then
         print_error "Échec de la compilation de main.go"
         exit 1
@@ -93,15 +92,10 @@ install_system_wide() {
         SUDO=""
     fi
     
-    # Create lib directory if it doesn't exist
-    $SUDO mkdir -p "$LIB_DIR"
+    echo "  - Installation de l'interpréteur dans $INSTALL_DIR..."
+    $SUDO cp bresson "$INSTALL_DIR/"
+    $SUDO chmod +x "$INSTALL_DIR/bresson"
     
-    # Install the interpreter in lib directory
-    echo "  - Installation de l'interpréteur dans $LIB_DIR..."
-    $SUDO cp bresson "$LIB_DIR/"
-    $SUDO chmod +x "$LIB_DIR/bresson"
-    
-    # Install the launcher in bin directory
     echo "  - Installation du launcher dans $INSTALL_DIR..."
     $SUDO cp bras "$INSTALL_DIR/"
     $SUDO chmod +x "$INSTALL_DIR/bras"
@@ -215,7 +209,7 @@ case "${1:-}" in
     --uninstall)
         print_step "Désinstallation de Bresson Script..."
         sudo rm -f "$INSTALL_DIR/bras"
-        sudo rm -rf "$LIB_DIR"
+        sudo rm -f "$INSTALL_DIR/bresson"
         print_success "Bresson Script désinstallé"
         exit 0
         ;;
