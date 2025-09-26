@@ -4,47 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 )
-
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
-}
-
-func findInterpreterDir(dir string) (string, bool) {
-	candidates := []string{
-		"bresson.exe", "bresson_interpreter.exe", "interpreter.exe",
-		"bresson", "bresson_interpreter", "interpreter",
-	}
-	for _, c := range candidates {
-		p := filepath.Join(dir, c)
-		if fileExists(p) {
-			return p, true
-		}
-	}
-	
-	systemPaths := []string{
-		"/usr/local/bin/bresson",
-		"/usr/bin/bresson",
-		"C:\\Program Files\\Bresson\\bresson.exe",
-	}
-	for _, p := range systemPaths {
-		if fileExists(p) {
-			return p, true
-		}
-	}
-	
-	mainGo := filepath.Join(dir, "main.go")
-	if fileExists(mainGo) {
-		return mainGo, false
-	}
-	parentMain := filepath.Join(dir, "..", "main.go")
-	if fileExists(parentMain) {
-		return parentMain, false
-	}
-	return "", false
-}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -52,39 +12,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	execPath, err := os.Executable()
-	if err != nil {
-		fmt.Println("Erreur:", err)
-		os.Exit(1)
-	}
-	dir := filepath.Dir(execPath)
+	scriptPath := os.Args[1]
+	args := os.Args[2:]
 
-	interp, isBinary := findInterpreterDir(dir)
-	if interp == "" {
-		cwd, _ := os.Getwd()
-		interp = filepath.Join(cwd, "main.go")
-		isBinary = false
-		if !fileExists(interp) {
-			fmt.Println("Impossible de trouver main.go ni binaire d'interpréteur dans le dossier de bras ni dans le dossier courant.")
-			os.Exit(1)
-		}
-	}
+	// Construire la commande pour exécuter bresson depuis le PATH
+	cmdArgs := append([]string{scriptPath}, args...)
+	cmd := exec.Command("bresson", cmdArgs...)
 
-	args := os.Args[1:]
-	var cmd *exec.Cmd
-	if isBinary {
-		cmd = exec.Command(interp, args...)
-	} else {
-		cmdArgs := append([]string{"run", interp}, args...)
-		cmd = exec.Command("go", cmdArgs...)
-	}
-
+	// Rediriger stdin, stdout, stderr
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
 
 	if err := cmd.Run(); err != nil {
-		fmt.Println("Erreur :", err)
+		fmt.Printf("Erreur d'exécution : %v\n", err)
 		os.Exit(1)
 	}
 }
