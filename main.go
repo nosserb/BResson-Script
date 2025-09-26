@@ -21,6 +21,22 @@ var currentColor = ""
 
 var cmdArgs []string
 
+var loggingEnabled = false
+var logBuffer []string
+
+func addLog(message string) {
+	if loggingEnabled {
+		timestamp := time.Now().Format("15:04:05")
+		logEntry := fmt.Sprintf("[%s] %s", timestamp, message)
+		logBuffer = append(logBuffer, logEntry)
+		fmt.Println(logEntry)
+	}
+}
+
+func getLogsAsString() string {
+	return strings.Join(logBuffer, "\n")
+}
+
 func extractVarName(line string) string {
 	parts := strings.Split(line, "->")
 	if len(parts) < 2 {
@@ -139,6 +155,28 @@ func runLine(line string) {
 		return
 	}
 
+	if strings.HasPrefix(line, "blog") {
+		loggingEnabled = true
+		logBuffer = []string{}
+		variables["_blog"] = ""
+		addLog("Logging système activé")
+		fmt.Println("=== LOGGING ACTIVÉ ===")
+		return
+	}
+
+	if strings.HasPrefix(line, "blogget") {
+		variables["_blog"] = getLogsAsString()
+		addLog("Logs récupérés dans _blog")
+		return
+	}
+
+	if strings.HasPrefix(line, "blogclear") {
+		logBuffer = []string{}
+		variables["_blog"] = ""
+		addLog("Logs effacés")
+		return
+	}
+
 	if line == "|" {
 		if len(blockStack) > 0 {
 			blockStack = blockStack[:len(blockStack)-1]
@@ -164,6 +202,7 @@ func runLine(line string) {
 			}
 		}
 		blockStack = append(blockStack, shouldExecBlock)
+		addLog(fmt.Sprintf("Boucle while: condition=%s, exécution=%v", cond, shouldExecBlock))
 		return
 	}
 
@@ -183,6 +222,7 @@ func runLine(line string) {
 			}
 		}
 		blockStack = append(blockStack, shouldExecBlock)
+		addLog(fmt.Sprintf("Condition if: %s, résultat=%v", cond, shouldExecBlock))
 		return
 	}
 
@@ -190,6 +230,7 @@ func runLine(line string) {
 		if len(blockStack) > 0 {
 			blockStack[len(blockStack)-1] = !blockStack[len(blockStack)-1]
 		}
+		addLog("Bloc else activé")
 		return
 	}
 
@@ -204,6 +245,7 @@ func runLine(line string) {
 		if err == nil && index > 0 && index < len(cmdArgs) {
 			variables["_bard"] = cmdArgs[index]
 			fmt.Printf("Argument %d: %s\n", index, cmdArgs[index])
+			addLog(fmt.Sprintf("Argument %d récupéré: %s", index, cmdArgs[index]))
 		}
 		return
 	}
@@ -223,6 +265,7 @@ func runLine(line string) {
 
 		if varName != "" {
 			variables[varName] = input
+			addLog(fmt.Sprintf("Input: %s = %s", varName, input))
 		}
 	}
 
@@ -232,6 +275,7 @@ func runLine(line string) {
 		varName := extractVarName(line)
 		if varName != "" {
 			variables[varName] = fmt.Sprintf("%v", result)
+			addLog(fmt.Sprintf("Calcul: %s = %v", varName, result))
 		}
 		return
 	}
@@ -246,8 +290,10 @@ func runLine(line string) {
 		if err == nil {
 			variables["_bread"] = string(content)
 			fmt.Printf("Lu fichier: %s\n", filename)
+			addLog(fmt.Sprintf("Fichier lu: %s (%d caractères)", filename, len(content)))
 		} else {
 			fmt.Printf("Erreur lecture: %s\n", err)
+			addLog(fmt.Sprintf("Erreur lecture fichier %s: %s", filename, err))
 		}
 		return
 	}
@@ -279,8 +325,10 @@ func runLine(line string) {
 			err := ioutil.WriteFile(filename, []byte(content), 0644)
 			if err == nil {
 				fmt.Printf("Écrit fichier: %s\n", filename)
+				addLog(fmt.Sprintf("Fichier écrit: %s (%d caractères)", filename, len(content)))
 			} else {
 				fmt.Printf("Erreur écriture: %s\n", err)
+				addLog(fmt.Sprintf("Erreur écriture fichier %s: %s", filename, err))
 			}
 		}
 		return
@@ -292,6 +340,7 @@ func runLine(line string) {
 		seconds, err := strconv.Atoi(replaceVars(s))
 		if err == nil {
 			fmt.Printf("Attente %d secondes...\n", seconds)
+			addLog(fmt.Sprintf("Sleep: %d secondes", seconds))
 			time.Sleep(time.Duration(seconds) * time.Second)
 		}
 		return
@@ -304,6 +353,7 @@ func runLine(line string) {
 		name = replaceVars(name)
 		timers[name] = time.Now()
 		fmt.Printf("Timer '%s' démarré\n", name)
+		addLog(fmt.Sprintf("Timer '%s' démarré", name))
 		return
 	}
 
@@ -315,6 +365,7 @@ func runLine(line string) {
 		if startTime, exists := timers[name]; exists {
 			duration := time.Since(startTime)
 			fmt.Printf("Timer '%s': %v\n", name, duration)
+			addLog(fmt.Sprintf("Timer '%s' terminé: %v", name, duration))
 			delete(timers, name)
 		}
 		return
@@ -326,6 +377,7 @@ func runLine(line string) {
 		color = strings.Trim(color, "\"")
 		currentColor = replaceVars(color)
 		fmt.Printf("Couleur changée: %s\n", currentColor)
+		addLog(fmt.Sprintf("Couleur changée: %s", currentColor))
 		return
 	}
 
@@ -340,6 +392,7 @@ func runLine(line string) {
 		}
 
 		printWithColor(s)
+		addLog(fmt.Sprintf("Print: %s", s))
 		return
 	}
 
@@ -349,8 +402,10 @@ func runLine(line string) {
 		path := findFile(replaceVars(name))
 		if path == "" {
 			fmt.Println("Fichier introuvable :", name)
+			addLog(fmt.Sprintf("Fichier introuvable: %s", name))
 		} else {
 			fmt.Println("Fichier trouvé :", path)
+			addLog(fmt.Sprintf("Fichier trouvé: %s", path))
 		}
 		return
 	}
@@ -362,6 +417,7 @@ func runLine(line string) {
 		name = strings.Trim(name, "\"")
 		name = replaceVars(name)
 		fmt.Println("Exécution :", name)
+		addLog(fmt.Sprintf("Exécution: %s", name))
 		return
 	}
 
@@ -377,6 +433,7 @@ func runLine(line string) {
 				val := rand.Intn(max-min+1) + min
 				variables["_brand"] = strconv.Itoa(val)
 				fmt.Printf("Random généré: %d\n", val)
+				addLog(fmt.Sprintf("Random généré: %d (entre %d et %d)", val, min, max))
 			}
 		}
 		return
@@ -409,6 +466,7 @@ func runLine(line string) {
 		}
 		variables["_btime"] = res
 		fmt.Println("Temps:", res)
+		addLog(fmt.Sprintf("Temps récupéré: %s", res))
 		return
 	}
 
@@ -438,8 +496,10 @@ func runLine(line string) {
 			err := os.Rename(oldName, newName)
 			if err != nil {
 				fmt.Println("Erreur renommage:", err)
+				addLog(fmt.Sprintf("Erreur renommage %s -> %s: %s", oldName, newName, err))
 			} else {
 				fmt.Println("Renommé:", oldName, "->", newName)
+				addLog(fmt.Sprintf("Fichier renommé: %s -> %s", oldName, newName))
 			}
 		} else {
 			fmt.Println("Usage: brename(\"ancien.txt\" \"nouveau.txt\")")
@@ -452,19 +512,20 @@ func runLine(line string) {
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 
-		if value == "_binput" || value == "_bcalc" || value == "_bread" || value == "_bard" {
+		if value == "_binput" || value == "_bcalc" || value == "_bread" || value == "_bard" || value == "_blog" {
 			if val, exists := variables[value]; exists {
 				variables[key] = val
 				fmt.Printf("Variable %s = %s\n", key, variables[key])
+				addLog(fmt.Sprintf("Variable assignée: %s = %s", key, variables[key]))
 			}
 		} else {
 			value = strings.Trim(value, "\"")
 			variables[key] = replaceVars(value)
 			fmt.Printf("Variable %s = %s\n", key, variables[key])
+			addLog(fmt.Sprintf("Variable créée: %s = %s", key, variables[key]))
 		}
 		return
 	}
-
 }
 
 func main() {
