@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -31,6 +30,13 @@ func addLog(message string) {
 		logBuffer = append(logBuffer, logEntry)
 		fmt.Println(logEntry)
 	}
+}
+
+func bprint(text string) {
+    fmt.Println(text)
+    if loggingEnabled {
+        addLog(text)
+    }
 }
 
 func getLogsAsString() string {
@@ -156,26 +162,34 @@ func runLine(line string) {
 	}
 
 	if strings.HasPrefix(line, "blog") {
-		loggingEnabled = true
-		logBuffer = []string{}
-		variables["_blog"] = ""
-		addLog("Logging système activé")
-		fmt.Println("=== LOGGING ACTIVÉ ===")
-		return
+    	loggingEnabled = true
+    	if logBuffer == nil {
+        	logBuffer = []string{}
+    	}
+    // Ne pas réinitialiser _blog si déjà existant
+    	if _, ok := variables["_blog"]; !ok {
+        	variables["_blog"] = ""
+    	}
+    	addLog("Logging système activé")
+    	fmt.Println("=== LOGGING ACTIVÉ ===")
+    	return
 	}
 
 	if strings.HasPrefix(line, "blogget") {
-		variables["_blog"] = getLogsAsString()
-		addLog("Logs récupérés dans _blog")
+    // Récupérer les logs en tant que chaîne
+    	variables["_blog"] = getLogsAsString()
+    // Ajouter log pour debug
+    	addLog("Logs récupérés dans _blog")
 		return
 	}
 
 	if strings.HasPrefix(line, "blogclear") {
-		logBuffer = []string{}
-		variables["_blog"] = ""
-		addLog("Logs effacés")
-		return
+    	logBuffer = []string{}
+    	variables["_blog"] = ""
+    	addLog("Logs effacés")
+    	return
 	}
+
 
 	if line == "|" {
 		if len(blockStack) > 0 {

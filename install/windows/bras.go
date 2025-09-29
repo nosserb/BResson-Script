@@ -23,7 +23,7 @@ func findInterpreterDir(dir string) (string, bool) {
 			return p, true
 		}
 	}
-	
+
 	systemPaths := []string{
 		"/usr/local/bin/bresson",
 		"/usr/bin/bresson",
@@ -34,7 +34,7 @@ func findInterpreterDir(dir string) (string, bool) {
 			return p, true
 		}
 	}
-	
+
 	mainGo := filepath.Join(dir, "main.go")
 	if fileExists(mainGo) {
 		return mainGo, false

@@ -1,6 +1,3 @@
-# Démonstration du système de logging
-blog
-
 bprint("=== Test du système de logging ===")
 
 # Variables et calculs
@@ -11,7 +8,7 @@ bcalc(age + 5) -> nouvel_age
 bprint("Nom: " + nom)
 bprint("Nouvel âge: " + nouvel_age)
 
-# Test avec fichier
+# Test avec fichier temporaire
 bwrite("test_log.txt", "Contenu de test")
 bread("test_log.txt")
 
@@ -24,9 +21,12 @@ bendtimer("demo")
 blogget
 logs = _blog
 
-bprint("=== LOGS COMPLETS ===")
-bprint(logs)
+# Convertir la liste de logs en chaîne de caractères pour écrire dans le fichier
+logs_str = join(logs, "\n")  # Chaque log sur une ligne
 
-# Sauvegarder les logs dans un fichier
-bwrite("logs_complets.txt", logs)
+bprint("=== LOGS COMPLETS ===")
+bprint(logs_str)
+
+# Sauvegarder tous les logs dans un fichier
+bwrite("logs_complets.txt", logs_str)
 bprint("Logs sauvegardés dans logs_complets.txt")
