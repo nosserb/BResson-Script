@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -11,509 +12,483 @@ import (
 	"time"
 )
 
-var variables = make(map[string]string)
-var blockStack []bool
-var arrays = make(map[string][]string)
-var functions = make(map[string][]string)
-var timers = make(map[string]time.Time)
-var currentColor = ""
+// Variables globales pour stocker l'état du programme
+var mesVariables = make(map[string]string)    // Stocke toutes les variables créées
+var pileDeBlocs []bool                        // Pile pour gérer les if/while imbriqués
+var mesTableaux = make(map[string][]string)   // Stocke les tableaux
+var mesFonctions = make(map[string][]string)  // Stocke les fonctions définies
+var mesTimers = make(map[string]time.Time)    // Stocke les timers
+var couleurActuelle = ""                      // Couleur actuelle pour l'affichage
+var argumentsCommande []string                // Arguments passés au programme
+var loggingActive = false                     // Active/désactive le logging
+var bufferLogs []string                       // Stocke tous les logs
 
-var cmdArgs []string
+// FONCTIONS DE LOGGING
 
-var loggingEnabled = false
-var logBuffer []string
-
-func addLog(message string) {
-	if loggingEnabled {
-		timestamp := time.Now().Format("15:04:05")
-		logEntry := fmt.Sprintf("[%s] %s", timestamp, message)
-		logBuffer = append(logBuffer, logEntry)
-		fmt.Println(logEntry)
+// Ajoute un message au système de logs
+func ajouterLog(message string) {
+	if loggingActive {
+		horodatage := time.Now().Format("15:04:05")
+		entreeLog := fmt.Sprintf("[%s] %s", horodatage, message)
+		bufferLogs = append(bufferLogs, entreeLog)
+		fmt.Println(entreeLog)
 	}
 }
 
-func bprint(text string) {
-    fmt.Println(text)
-    if loggingEnabled {
-        addLog(text)
-    }
+// Affiche du texte et l'ajoute aux logs si activé
+func afficherTexte(texte string) {
+	fmt.Println(texte)
+	if loggingActive {
+		ajouterLog(texte)
+	}
 }
 
-func getLogsAsString() string {
-	return strings.Join(logBuffer, "\n")
+// Retourne tous les logs sous forme de chaîne
+func obtenirLogsCommeTexte() string {
+	return strings.Join(bufferLogs, "\n")
 }
 
-func extractVarName(line string) string {
-	parts := strings.Split(line, "->")
-	if len(parts) < 2 {
+// FONCTIONS UTILITAIRES 
+
+// Extrait le nom de variable après "->"
+func extraireNomVariable(ligne string) string {
+	parties := strings.Split(ligne, "->")
+	if len(parties) < 2 {
 		return ""
 	}
-	return strings.TrimSpace(parts[1])
+	return strings.TrimSpace(parties[1])
 }
 
-func replaceVars(s string) string {
-	for k, v := range variables {
-		s = strings.ReplaceAll(s, k, v)
+// Remplace toutes les variables dans une chaîne par leurs valeurs
+func remplacerVariables(chaine string) string {
+	for nom, valeur := range mesVariables {
+		chaine = strings.ReplaceAll(chaine, nom, valeur)
 	}
-	return s
+	return chaine
 }
 
-func parseStringExpression(expr string) string {
-	expr = strings.TrimSpace(expr)
-	if !strings.Contains(expr, "+") {
-		return replaceVars(strings.Trim(expr, "\""))
+// Analyse une expression de texte avec concaténation
+func analyserExpressionTexte(expression string) string {
+	expression = strings.TrimSpace(expression)
+	
+	// Si pas de concaténation, retourner directement
+	if !strings.Contains(expression, "+") {
+		return remplacerVariables(strings.Trim(expression, "\""))
 	}
 
-	parts := strings.Split(expr, "+")
-	result := ""
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		part = strings.Trim(part, "\"")
-		part = replaceVars(part)
-		result += part
+	// Joindre des textes avec +
+	parties := strings.Split(expression, "+")
+	resultat := ""
+	for _, partie := range parties {
+		partie = strings.TrimSpace(partie)
+		partie = strings.Trim(partie, "\"")
+		partie = remplacerVariables(partie)
+		resultat += partie
 	}
-	return result
+	return resultat
 }
 
-func findFile(name string) string {
-	var result string
-	filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+// Cherche un fichier dans le répertoire courant et ses sous-dossiers
+func chercherFichier(nom string) string {
+	var resultat string
+	filepath.Walk(".", func(chemin string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
-		if !info.IsDir() && info.Name() == name {
-			result = path
+		if !info.IsDir() && info.Name() == nom {
+			resultat = chemin
 			return filepath.SkipDir
 		}
 		return nil
 	})
-	return result
+	return resultat
 }
 
-func evalExpression(expr string) string {
-	expr = strings.TrimSpace(expr)
-	if strings.HasPrefix(expr, "bfile") {
-		inner := strings.TrimPrefix(expr, "bfile")
-		inner = strings.Trim(inner, "() ")
-		inner = replaceVars(inner)
-		return findFile(inner)
+// evaluerExpression - Évalue une expression (comme bfile())
+func evaluerExpression(expression string) string {
+	expression = strings.TrimSpace(expression)
+	if strings.HasPrefix(expression, "bfile") {
+		contenu := strings.TrimPrefix(expression, "bfile")
+		contenu = strings.Trim(contenu, "() ")
+		contenu = remplacerVariables(contenu)
+		return chercherFichier(contenu)
 	}
-	return replaceVars(expr)
+	return remplacerVariables(expression)
 }
 
-func shouldExecute() bool {
-	if len(blockStack) == 0 {
+// FONCTIONS DE CONTRÔLE DE FLUX 
+
+// Vérifie si on doit exécuter la ligne courante (gestion des blocs if/while)
+func doitExecuter() bool {
+	if len(pileDeBlocs) == 0 {
 		return true
 	}
-	for _, shouldExec := range blockStack {
-		if !shouldExec {
+	for _, doitExec := range pileDeBlocs {
+		if !doitExec {
 			return false
 		}
 	}
 	return true
 }
 
-func evaluateMath(expr string) (float64, error) {
-	expr = strings.ReplaceAll(expr, " ", "")
-	if strings.Contains(expr, "+") {
-		parts := strings.Split(expr, "+")
-		sum := 0.0
-		for _, part := range parts {
-			val, err := strconv.ParseFloat(part, 64)
+// FONCTIONS MATHÉMATIQUES
+
+// Évalue une expression mathématique simple
+func calculerMath(expression string) (float64, error) {
+	expression = strings.ReplaceAll(expression, " ", "")
+	
+	// Addition
+	if strings.Contains(expression, "+") {
+		parties := strings.Split(expression, "+")
+		somme := 0.0
+		for _, partie := range parties {
+			valeur, err := strconv.ParseFloat(partie, 64)
 			if err != nil {
 				return 0, err
 			}
-			sum += val
+			somme += valeur
 		}
-		return sum, nil
+		return somme, nil
 	}
-	if strings.Contains(expr, "*") {
-		parts := strings.Split(expr, "*")
-		if len(parts) == 2 {
-			a, err1 := strconv.ParseFloat(parts[0], 64)
-			b, err2 := strconv.ParseFloat(parts[1], 64)
+	
+	// Multiplication
+	if strings.Contains(expression, "*") {
+		parties := strings.Split(expression, "*")
+		if len(parties) == 2 {
+			a, err1 := strconv.ParseFloat(parties[0], 64)
+			b, err2 := strconv.ParseFloat(parties[1], 64)
 			if err1 == nil && err2 == nil {
 				return a * b, nil
 			}
 		}
 	}
-	return strconv.ParseFloat(expr, 64)
+	
+	// Nombre simple
+	return strconv.ParseFloat(expression, 64)
 }
 
-func printWithColor(text string) {
-	switch currentColor {
+// AFFICHAGE 
+
+// Affiche du texte avec la couleur définie
+func afficherAvecCouleur(texte string) {
+	switch couleurActuelle {
 	case "rouge":
-		fmt.Printf("\033[31m%s\033[0m\n", text)
+		fmt.Printf("\033[31m%s\033[0m\n", texte)
 	case "vert":
-		fmt.Printf("\033[32m%s\033[0m\n", text)
+		fmt.Printf("\033[32m%s\033[0m\n", texte)
 	case "bleu":
-		fmt.Printf("\033[34m%s\033[0m\n", text)
+		fmt.Printf("\033[34m%s\033[0m\n", texte)
 	case "jaune":
-		fmt.Printf("\033[33m%s\033[0m\n", text)
+		fmt.Printf("\033[33m%s\033[0m\n", texte)
 	default:
-		fmt.Println(text)
+		fmt.Println(texte)
 	}
 }
 
-func runLine(line string) {
-	line = strings.TrimSpace(line)
-	if line == "" || strings.HasPrefix(line, "#") {
+// FONCTION PRINCIPALE D'EXÉCUTION
+
+// Analyse et exécute une ligne de code Bresson
+func executerLigne(ligne string) {
+	ligne = strings.TrimSpace(ligne)
+	
+	// Ignorer les lignes vides et les commentaires
+	if ligne == "" || strings.HasPrefix(ligne, "#") {
 		return
 	}
 
-	if strings.HasPrefix(line, "blog") {
-    	loggingEnabled = true
-    	if logBuffer == nil {
-        	logBuffer = []string{}
-    	}
-    // Ne pas réinitialiser _blog si déjà existant
-    	if _, ok := variables["_blog"]; !ok {
-        	variables["_blog"] = ""
-    	}
-    	addLog("Logging système activé")
-    	fmt.Println("=== LOGGING ACTIVÉ ===")
-    	return
-	}
-
-	if strings.HasPrefix(line, "blogget") {
-    // Récupérer les logs en tant que chaîne
-    	variables["_blog"] = getLogsAsString()
-    // Ajouter log pour debug
-    	addLog("Logs récupérés dans _blog")
+	// COMMANDES DE LOGGING
+	
+	// Active le système de logging
+	if strings.HasPrefix(ligne, "blog") {
+		loggingActive = true
+		if bufferLogs == nil {
+			bufferLogs = []string{}
+		}
+		// Ne pas réinitialiser _blog si déjà existant
+		if _, existe := mesVariables["_blog"]; !existe {
+			mesVariables["_blog"] = ""
+		}
+		ajouterLog("Système de logging activé")
+		fmt.Println("=== LOGGING ACTIVÉ ===")
 		return
 	}
 
-	if strings.HasPrefix(line, "blogclear") {
-    	logBuffer = []string{}
-    	variables["_blog"] = ""
-    	addLog("Logs effacés")
-    	return
+	// Récupère tous les logs dans la variable _blog
+	if strings.HasPrefix(ligne, "blogget") {
+		mesVariables["_blog"] = obtenirLogsCommeTexte()
+		ajouterLog("Logs récupérés dans la variable _blog")
+		return
 	}
 
+	// Efface tous les logs
+	if strings.HasPrefix(ligne, "blogclear") {
+		bufferLogs = []string{}
+		mesVariables["_blog"] = ""
+		ajouterLog("Tous les logs ont été effacés")
+		return
+	}
 
-	if line == "|" {
-		if len(blockStack) > 0 {
-			blockStack = blockStack[:len(blockStack)-1]
+	// CONTRÔLE DE FLUX
+	
+	// Ferme un bloc (if, while, etc.)
+	if ligne == "|" {
+		if len(pileDeBlocs) > 0 {
+			pileDeBlocs = pileDeBlocs[:len(pileDeBlocs)-1]
 		}
 		return
 	}
 
-	if strings.HasPrefix(line, "bwhile") {
-		cond := strings.TrimPrefix(line, "bwhile")
-		cond = strings.Trim(cond, "() ")
+	// Début d'une boucle while
+	if strings.HasPrefix(ligne, "bwhile") {
+		condition := strings.TrimPrefix(ligne, "bwhile")
+		condition = strings.Trim(condition, "() ")
 
-		shouldExecBlock := false
-		if strings.Contains(cond, "<=") {
-			parts := strings.Split(cond, "<=")
-			if len(parts) == 2 {
-				left := strings.TrimSpace(parts[0])
-				right := strings.TrimSpace(parts[1])
-				leftVal, err1 := strconv.Atoi(replaceVars(left))
-				rightVal, err2 := strconv.Atoi(replaceVars(right))
+		doitExecuterBloc := false
+		if strings.Contains(condition, "<=") {
+			parties := strings.Split(condition, "<=")
+			if len(parties) == 2 {
+				gauche := strings.TrimSpace(parties[0])
+				droite := strings.TrimSpace(parties[1])
+				valeurGauche, err1 := strconv.Atoi(remplacerVariables(gauche))
+				valeurDroite, err2 := strconv.Atoi(remplacerVariables(droite))
 				if err1 == nil && err2 == nil {
-					shouldExecBlock = leftVal <= rightVal
+					doitExecuterBloc = valeurGauche <= valeurDroite
 				}
 			}
 		}
-		blockStack = append(blockStack, shouldExecBlock)
-		addLog(fmt.Sprintf("Boucle while: condition=%s, exécution=%v", cond, shouldExecBlock))
+		pileDeBlocs = append(pileDeBlocs, doitExecuterBloc)
+		ajouterLog(fmt.Sprintf("Boucle while: condition=%s, exécution=%v", condition, doitExecuterBloc))
 		return
 	}
 
-	if strings.HasPrefix(line, "bif") {
-		cond := strings.TrimPrefix(line, "bif")
-		cond = strings.Trim(cond, "() ")
+	// Début d'une condition if
+	if strings.HasPrefix(ligne, "bif") {
+		condition := strings.TrimPrefix(ligne, "bif")
+		condition = strings.Trim(condition, "() ")
 
-		shouldExecBlock := false
-		if strings.Contains(cond, "==") {
-			parts := strings.Split(cond, "==")
-			if len(parts) == 2 {
-				left := strings.TrimSpace(parts[0])
-				right := strings.TrimSpace(parts[1])
-				left = strings.Trim(left, "\"")
-				right = strings.Trim(right, "\"")
-				shouldExecBlock = replaceVars(left) == replaceVars(right)
+		doitExecuterBloc := false
+		if strings.Contains(condition, "==") {
+			parties := strings.Split(condition, "==")
+			if len(parties) == 2 {
+				gauche := strings.TrimSpace(parties[0])
+				droite := strings.TrimSpace(parties[1])
+				gauche = strings.Trim(gauche, "\"")
+				droite = strings.Trim(droite, "\"")
+				doitExecuterBloc = remplacerVariables(gauche) == remplacerVariables(droite)
 			}
 		}
-		blockStack = append(blockStack, shouldExecBlock)
-		addLog(fmt.Sprintf("Condition if: %s, résultat=%v", cond, shouldExecBlock))
+		pileDeBlocs = append(pileDeBlocs, doitExecuterBloc)
+		ajouterLog(fmt.Sprintf("Condition if: %s, résultat=%v", condition, doitExecuterBloc))
 		return
 	}
 
-	if strings.HasPrefix(line, "belse") {
-		if len(blockStack) > 0 {
-			blockStack[len(blockStack)-1] = !blockStack[len(blockStack)-1]
+	//  Bloc else (inverse la condition précédente)
+	if strings.HasPrefix(ligne, "belse") {
+		if len(pileDeBlocs) > 0 {
+			pileDeBlocs[len(pileDeBlocs)-1] = !pileDeBlocs[len(pileDeBlocs)-1]
 		}
-		addLog("Bloc else activé")
+		ajouterLog("Bloc else activé")
 		return
 	}
 
-	if !shouldExecute() {
+	// Si on est dans un bloc qui ne doit pas s'exécuter, ignorer
+	if !doitExecuter() {
 		return
 	}
 
-	if strings.HasPrefix(line, "bard") {
-		s := strings.TrimPrefix(line, "bard")
-		s = strings.Trim(s, "() ")
-		index, err := strconv.Atoi(s)
-		if err == nil && index > 0 && index < len(cmdArgs) {
-			variables["_bard"] = cmdArgs[index]
-			fmt.Printf("Argument %d: %s\n", index, cmdArgs[index])
-			addLog(fmt.Sprintf("Argument %d récupéré: %s", index, cmdArgs[index]))
-		}
-		return
-	}
+	// COMMANDES D'ENTRÉE/SORTIE
 
-	if strings.HasPrefix(line, "binput") {
-		parts := strings.Split(line, "->")
-		prompt := strings.TrimSpace(parts[0][6:])
-		prompt = strings.Trim(prompt, `()"`)
-		varName := ""
-		if len(parts) > 1 {
-			varName = strings.TrimSpace(parts[1])
-		}
-
-		fmt.Print(prompt + " ")
-		var input string
-		fmt.Scanln(&input)
-
-		if varName != "" {
-			variables[varName] = input
-			addLog(fmt.Sprintf("Input: %s = %s", varName, input))
-		}
-	}
-
-	if strings.HasPrefix(line, "bcalc") {
-		expr := strings.TrimSpace(line[5:])
-		result, _ := evaluateMath(expr)
-		varName := extractVarName(line)
-		if varName != "" {
-			variables[varName] = fmt.Sprintf("%v", result)
-			addLog(fmt.Sprintf("Calcul: %s = %v", varName, result))
+	// Récupère un argument de la ligne de commande
+	if strings.HasPrefix(ligne, "bard") {
+		parametre := strings.TrimPrefix(ligne, "bard")
+		parametre = strings.Trim(parametre, "() ")
+		index, err := strconv.Atoi(parametre)
+		if err == nil && index > 0 && index < len(argumentsCommande) {
+			mesVariables["_bard"] = argumentsCommande[index]
+			fmt.Printf("Argument %d: %s\n", index, argumentsCommande[index])
+			ajouterLog(fmt.Sprintf("Argument %d récupéré: %s", index, argumentsCommande[index]))
 		}
 		return
 	}
 
-	if strings.HasPrefix(line, "bread") {
-		filename := strings.TrimPrefix(line, "bread")
-		filename = strings.Trim(filename, "()")
-		filename = strings.Trim(filename, "\"")
-		filename = replaceVars(filename)
+	// Demande une saisie utilisateur
+	if strings.HasPrefix(ligne, "binput") {
+		parties := strings.Split(ligne, "->")
+		invite := strings.TrimSpace(parties[0][6:]) // Enlever "binput"
+		invite = strings.Trim(invite, `()"`)
+		nomVariable := ""
+		if len(parties) > 1 {
+			nomVariable = strings.TrimSpace(parties[1])
+		}
 
-		content, err := ioutil.ReadFile(filename)
-		if err == nil {
-			variables["_bread"] = string(content)
-			fmt.Printf("Lu fichier: %s\n", filename)
-			addLog(fmt.Sprintf("Fichier lu: %s (%d caractères)", filename, len(content)))
-		} else {
-			fmt.Printf("Erreur lecture: %s\n", err)
-			addLog(fmt.Sprintf("Erreur lecture fichier %s: %s", filename, err))
+		fmt.Print(invite + " ")
+		var saisie string
+		fmt.Scanln(&saisie)
+
+		if nomVariable != "" {
+			mesVariables[nomVariable] = saisie
+			ajouterLog(fmt.Sprintf("Saisie utilisateur: %s = %s", nomVariable, saisie))
 		}
 		return
 	}
 
-	if strings.HasPrefix(line, "bwrite") {
-		s := strings.TrimPrefix(line, "bwrite")
-		s = strings.Trim(s, "() ")
+	// Affiche du texte
+	if strings.HasPrefix(ligne, "bprint") {
+		texte := strings.TrimPrefix(ligne, "bprint")
+		texte = strings.TrimSpace(texte)
+		texte = strings.Trim(texte, `()"`)
+		texte = analyserExpressionTexte(texte)
 
-		parts := []string{}
-		inQuotes := false
-		current := ""
-		for _, char := range s {
-			if char == '"' {
-				if inQuotes {
-					parts = append(parts, current)
-					current = ""
-					inQuotes = false
-				} else {
-					inQuotes = true
-				}
-			} else if inQuotes {
-				current += string(char)
-			}
+		// Remplacer les variables entre quotes
+		for nom, valeur := range mesVariables {
+			texte = strings.ReplaceAll(texte, "'"+nom+"'", valeur)
 		}
 
-		if len(parts) == 2 {
-			filename := replaceVars(parts[0])
-			content := replaceVars(parts[1])
-			err := ioutil.WriteFile(filename, []byte(content), 0644)
-			if err == nil {
-				fmt.Printf("Écrit fichier: %s\n", filename)
-				addLog(fmt.Sprintf("Fichier écrit: %s (%d caractères)", filename, len(content)))
-			} else {
-				fmt.Printf("Erreur écriture: %s\n", err)
-				addLog(fmt.Sprintf("Erreur écriture fichier %s: %s", filename, err))
-			}
+		afficherAvecCouleur(texte)
+		ajouterLog(fmt.Sprintf("Affichage: %s", texte))
+		return
+	}
+
+	// COMMANDES MATHÉMATIQUES
+
+	// Effectue un calcul mathématique
+	if strings.HasPrefix(ligne, "bcalc") {
+		expression := strings.TrimSpace(ligne[5:])
+		resultat, _ := calculerMath(expression)
+		nomVariable := extraireNomVariable(ligne)
+		if nomVariable != "" {
+			mesVariables[nomVariable] = fmt.Sprintf("%v", resultat)
+			ajouterLog(fmt.Sprintf("Calcul: %s = %v", nomVariable, resultat))
 		}
 		return
 	}
 
-	if strings.HasPrefix(line, "bsleep") {
-		s := strings.TrimPrefix(line, "bsleep")
-		s = strings.Trim(s, "() ")
-		seconds, err := strconv.Atoi(replaceVars(s))
-		if err == nil {
-			fmt.Printf("Attente %d secondes...\n", seconds)
-			addLog(fmt.Sprintf("Sleep: %d secondes", seconds))
-			time.Sleep(time.Duration(seconds) * time.Second)
-		}
-		return
-	}
-
-	if strings.HasPrefix(line, "btimer") {
-		name := strings.TrimPrefix(line, "btimer")
-		name = strings.Trim(name, "()")
-		name = strings.Trim(name, "\"")
-		name = replaceVars(name)
-		timers[name] = time.Now()
-		fmt.Printf("Timer '%s' démarré\n", name)
-		addLog(fmt.Sprintf("Timer '%s' démarré", name))
-		return
-	}
-
-	if strings.HasPrefix(line, "bendtimer") {
-		name := strings.TrimPrefix(line, "bendtimer")
-		name = strings.Trim(name, "()")
-		name = strings.Trim(name, "\"")
-		name = replaceVars(name)
-		if startTime, exists := timers[name]; exists {
-			duration := time.Since(startTime)
-			fmt.Printf("Timer '%s': %v\n", name, duration)
-			addLog(fmt.Sprintf("Timer '%s' terminé: %v", name, duration))
-			delete(timers, name)
-		}
-		return
-	}
-
-	if strings.HasPrefix(line, "bcolor") {
-		color := strings.TrimPrefix(line, "bcolor")
-		color = strings.Trim(color, "()")
-		color = strings.Trim(color, "\"")
-		currentColor = replaceVars(color)
-		fmt.Printf("Couleur changée: %s\n", currentColor)
-		addLog(fmt.Sprintf("Couleur changée: %s", currentColor))
-		return
-	}
-
-	if strings.HasPrefix(line, "bprint") {
-		s := strings.TrimPrefix(line, "bprint")
-		s = strings.TrimSpace(s)
-		s = strings.Trim(s, `()"`)
-		s = parseStringExpression(s)
-
-		for k, v := range variables {
-			s = strings.ReplaceAll(s, "'"+k+"'", v)
-		}
-
-		printWithColor(s)
-		addLog(fmt.Sprintf("Print: %s", s))
-		return
-	}
-
-	if strings.HasPrefix(line, "bfile") {
-		name := strings.TrimPrefix(line, "bfile")
-		name = strings.Trim(name, "()\\ ")
-		path := findFile(replaceVars(name))
-		if path == "" {
-			fmt.Println("Fichier introuvable :", name)
-			addLog(fmt.Sprintf("Fichier introuvable: %s", name))
-		} else {
-			fmt.Println("Fichier trouvé :", path)
-			addLog(fmt.Sprintf("Fichier trouvé: %s", path))
-		}
-		return
-	}
-
-	if strings.HasPrefix(line, "bstartfile") {
-		name := strings.TrimPrefix(line, "bstartfile")
-		name = strings.TrimSpace(name)
-		name = strings.Trim(name, "()")
-		name = strings.Trim(name, "\"")
-		name = replaceVars(name)
-		fmt.Println("Exécution :", name)
-		addLog(fmt.Sprintf("Exécution: %s", name))
-		return
-	}
-
-	if strings.HasPrefix(line, "brand") {
-		s := strings.TrimPrefix(line, "brand")
-		s = strings.Trim(s, "() ")
-		parts := strings.Fields(s)
-		if len(parts) == 2 {
-			min, err1 := strconv.Atoi(parts[0])
-			max, err2 := strconv.Atoi(parts[1])
+	// Génère un nombre aléatoire
+	if strings.HasPrefix(ligne, "brand") {
+		parametre := strings.TrimPrefix(ligne, "brand")
+		parametre = strings.Trim(parametre, "() ")
+		parties := strings.Fields(parametre)
+		if len(parties) == 2 {
+			min, err1 := strconv.Atoi(parties[0])
+			max, err2 := strconv.Atoi(parties[1])
 			if err1 == nil && err2 == nil {
 				rand.Seed(time.Now().UnixNano())
-				val := rand.Intn(max-min+1) + min
-				variables["_brand"] = strconv.Itoa(val)
-				fmt.Printf("Random généré: %d\n", val)
-				addLog(fmt.Sprintf("Random généré: %d (entre %d et %d)", val, min, max))
+				valeur := rand.Intn(max-min+1) + min
+				mesVariables["_brand"] = strconv.Itoa(valeur)
+				fmt.Printf("Nombre aléatoire généré: %d\n", valeur)
+				ajouterLog(fmt.Sprintf("Nombre aléatoire: %d (entre %d et %d)", valeur, min, max))
 			}
 		}
 		return
 	}
 
-	if strings.HasPrefix(line, "btime") {
-		s := strings.TrimPrefix(line, "btime")
-		s = strings.Trim(s, "()\\ ")
-		now := time.Now()
-		parts := strings.Fields(s)
-		res := ""
-		for i, p := range parts {
-			switch p {
-			case "j":
-				res += fmt.Sprintf("%02d", now.Day())
-			case "m":
-				res += fmt.Sprintf("%02d", now.Month())
-			case "a":
-				res += fmt.Sprintf("%d", now.Year())
-			case "h":
-				res += fmt.Sprintf("%02d", now.Hour())
-			case "min":
-				res += fmt.Sprintf("%02d", now.Minute())
-			case "s":
-				res += fmt.Sprintf("%02d", now.Second())
-			}
-			if i < len(parts)-1 {
-				res += " "
-			}
+	// COMMANDES DE FICHIERS 
+
+	// Lit le contenu d'un fichier
+	if strings.HasPrefix(ligne, "bread") {
+		nomFichier := strings.TrimPrefix(ligne, "bread")
+		nomFichier = strings.Trim(nomFichier, "()")
+		nomFichier = strings.Trim(nomFichier, "\"")
+		nomFichier = remplacerVariables(nomFichier)
+
+		contenu, err := ioutil.ReadFile(nomFichier)
+		if err == nil {
+			mesVariables["_bread"] = string(contenu)
+			fmt.Printf("Fichier lu: %s\n", nomFichier)
+			ajouterLog(fmt.Sprintf("Fichier lu: %s (%d caractères)", nomFichier, len(contenu)))
+		} else {
+			fmt.Printf("Erreur de lecture: %s\n", err)
+			ajouterLog(fmt.Sprintf("Erreur lecture fichier %s: %s", nomFichier, err))
 		}
-		variables["_btime"] = res
-		fmt.Println("Temps:", res)
-		addLog(fmt.Sprintf("Temps récupéré: %s", res))
 		return
 	}
 
-	if strings.HasPrefix(line, "brename") {
-		s := strings.TrimPrefix(line, "brename")
-		s = strings.Trim(s, "() ")
-		parts := []string{}
-		inQuotes := false
-		current := ""
-		for _, char := range s {
-			if char == '"' {
-				if inQuotes {
-					parts = append(parts, current)
-					current = ""
-					inQuotes = false
+	// Écrit du contenu dans un fichier
+	if strings.HasPrefix(ligne, "bwrite") {
+		parametre := strings.TrimPrefix(ligne, "bwrite")
+		parametre = strings.Trim(parametre, "() ")
+
+		// Lire le texte entre guillemets
+		parties := []string{}
+		entreGuillemets := false
+		actuel := ""
+		for _, caractere := range parametre {
+			if caractere == '"' {
+				if entreGuillemets {
+					parties = append(parties, actuel)
+					actuel = ""
+					entreGuillemets = false
 				} else {
-					inQuotes = true
+					entreGuillemets = true
 				}
-			} else if inQuotes {
-				current += string(char)
+			} else if entreGuillemets {
+				actuel += string(caractere)
 			}
 		}
 
-		if len(parts) == 2 {
-			oldName := replaceVars(parts[0])
-			newName := replaceVars(parts[1])
-			err := os.Rename(oldName, newName)
-			if err != nil {
-				fmt.Println("Erreur renommage:", err)
-				addLog(fmt.Sprintf("Erreur renommage %s -> %s: %s", oldName, newName, err))
+		if len(parties) == 2 {
+			nomFichier := remplacerVariables(parties[0])
+			contenu := remplacerVariables(parties[1])
+			err := ioutil.WriteFile(nomFichier, []byte(contenu), 0644)
+			if err == nil {
+				fmt.Printf("Fichier écrit: %s\n", nomFichier)
+				ajouterLog(fmt.Sprintf("Fichier écrit: %s (%d caractères)", nomFichier, len(contenu)))
 			} else {
-				fmt.Println("Renommé:", oldName, "->", newName)
-				addLog(fmt.Sprintf("Fichier renommé: %s -> %s", oldName, newName))
+				fmt.Printf("Erreur d'écriture: %s\n", err)
+				ajouterLog(fmt.Sprintf("Erreur écriture fichier %s: %s", nomFichier, err))
+			}
+		}
+		return
+	}
+
+	// Cherche un fichier
+	if strings.HasPrefix(ligne, "bfile") {
+		nom := strings.TrimPrefix(ligne, "bfile")
+		nom = strings.Trim(nom, "()\\ ")
+		chemin := chercherFichier(remplacerVariables(nom))
+		if chemin == "" {
+			fmt.Println("Fichier introuvable :", nom)
+			ajouterLog(fmt.Sprintf("Fichier introuvable: %s", nom))
+		} else {
+			fmt.Println("Fichier trouvé :", chemin)
+			ajouterLog(fmt.Sprintf("Fichier trouvé: %s", chemin))
+		}
+		return
+	}
+
+	// Renomme un fichier
+	if strings.HasPrefix(ligne, "brename") {
+		parametre := strings.TrimPrefix(ligne, "brename")
+		parametre = strings.Trim(parametre, "() ")
+		
+		// Lire le texte entre guillemets
+		parties := []string{}
+		entreGuillemets := false
+		actuel := ""
+		for _, caractere := range parametre {
+			if caractere == '"' {
+				if entreGuillemets {
+					parties = append(parties, actuel)
+					actuel = ""
+					entreGuillemets = false
+				} else {
+					entreGuillemets = true
+				}
+			} else if entreGuillemets {
+				actuel += string(caractere)
+			}
+		}
+
+		if len(parties) == 2 {
+			ancienNom := remplacerVariables(parties[0])
+			nouveauNom := remplacerVariables(parties[1])
+			err := os.Rename(ancienNom, nouveauNom)
+			if err != nil {
+				fmt.Println("Erreur de renommage:", err)
+				ajouterLog(fmt.Sprintf("Erreur renommage %s -> %s: %s", ancienNom, nouveauNom, err))
+			} else {
+				fmt.Println("Renommé:", ancienNom, "->", nouveauNom)
+				ajouterLog(fmt.Sprintf("Fichier renommé: %s -> %s", ancienNom, nouveauNom))
 			}
 		} else {
 			fmt.Println("Usage: brename(\"ancien.txt\" \"nouveau.txt\")")
@@ -521,47 +496,159 @@ func runLine(line string) {
 		return
 	}
 
-	if strings.Contains(line, "=") && !strings.Contains(line, "==") {
-		parts := strings.SplitN(line, "=", 2)
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
+	// COMMANDES DE TEMPS
 
-		if value == "_binput" || value == "_bcalc" || value == "_bread" || value == "_bard" || value == "_blog" {
-			if val, exists := variables[value]; exists {
-				variables[key] = val
-				fmt.Printf("Variable %s = %s\n", key, variables[key])
-				addLog(fmt.Sprintf("Variable assignée: %s = %s", key, variables[key]))
+	// Faire une pause
+	if strings.HasPrefix(ligne, "bsleep") {
+		parametre := strings.TrimPrefix(ligne, "bsleep")
+		parametre = strings.Trim(parametre, "() ")
+		secondes, err := strconv.Atoi(remplacerVariables(parametre))
+		if err == nil {
+			fmt.Printf("Attente de %d secondes...\n", secondes)
+			ajouterLog(fmt.Sprintf("Pause: %d secondes", secondes))
+			time.Sleep(time.Duration(secondes) * time.Second)
+		}
+		return
+	}
+
+	// Démarre un timer
+	if strings.HasPrefix(ligne, "btimer") {
+		nom := strings.TrimPrefix(ligne, "btimer")
+		nom = strings.Trim(nom, "()")
+		nom = strings.Trim(nom, "\"")
+		nom = remplacerVariables(nom)
+		mesTimers[nom] = time.Now()
+		fmt.Printf("Timer '%s' démarré\n", nom)
+		ajouterLog(fmt.Sprintf("Timer '%s' démarré", nom))
+		return
+	}
+
+	// Arrête un timer et affiche la durée
+	if strings.HasPrefix(ligne, "bendtimer") {
+		nom := strings.TrimPrefix(ligne, "bendtimer")
+		nom = strings.Trim(nom, "()")
+		nom = strings.Trim(nom, "\"")
+		nom = remplacerVariables(nom)
+		if heureDebut, existe := mesTimers[nom]; existe {
+			duree := time.Since(heureDebut)
+			fmt.Printf("Timer '%s': %v\n", nom, duree)
+			ajouterLog(fmt.Sprintf("Timer '%s' terminé: %v", nom, duree))
+			delete(mesTimers, nom)
+		}
+		return
+	}
+
+	// Récupère la date/heure actuelle
+	if strings.HasPrefix(ligne, "btime") {
+		parametre := strings.TrimPrefix(ligne, "btime")
+		parametre = strings.Trim(parametre, "()\\ ")
+		maintenant := time.Now()
+		parties := strings.Fields(parametre)
+		resultat := ""
+		
+		for i, partie := range parties {
+			switch partie {
+			case "j":
+				resultat += fmt.Sprintf("%02d", maintenant.Day())
+			case "m":
+				resultat += fmt.Sprintf("%02d", maintenant.Month())
+			case "a":
+				resultat += fmt.Sprintf("%d", maintenant.Year())
+			case "h":
+				resultat += fmt.Sprintf("%02d", maintenant.Hour())
+			case "min":
+				resultat += fmt.Sprintf("%02d", maintenant.Minute())
+			case "s":
+				resultat += fmt.Sprintf("%02d", maintenant.Second())
+			}
+			if i < len(parties)-1 {
+				resultat += " "
+			}
+		}
+		mesVariables["_btime"] = resultat
+		fmt.Println("Date/Heure:", resultat)
+		ajouterLog(fmt.Sprintf("Date/heure récupérée: %s", resultat))
+		return
+	}
+
+	// COMMANDES D'AFFICHAGE
+
+	// Change la couleur d'affichage
+	if strings.HasPrefix(ligne, "bcolor") {
+		couleur := strings.TrimPrefix(ligne, "bcolor")
+		couleur = strings.Trim(couleur, "()")
+		couleur = strings.Trim(couleur, "\"")
+		couleurActuelle = remplacerVariables(couleur)
+		fmt.Printf("Couleur changée: %s\n", couleurActuelle)
+		ajouterLog(fmt.Sprintf("Couleur changée: %s", couleurActuelle))
+		return
+	}
+
+	// Exécute un fichier (simulation)
+	if strings.HasPrefix(ligne, "bstartfile") {
+		nom := strings.TrimPrefix(ligne, "bstartfile")
+		nom = strings.TrimSpace(nom)
+		nom = strings.Trim(nom, "()")
+		nom = strings.Trim(nom, "\"")
+		nom = remplacerVariables(nom)
+		fmt.Println("Exécution de:", nom)
+		ajouterLog(fmt.Sprintf("Exécution: %s", nom))
+		return
+	}
+
+	// GESTION DES VARIABLES
+
+	// Assignation de variable ( = mais pas ==)
+	if strings.Contains(ligne, "=") && !strings.Contains(ligne, "==") {
+		parties := strings.SplitN(ligne, "=", 2)
+		nom := strings.TrimSpace(parties[0])
+		valeur := strings.TrimSpace(parties[1])
+
+		// Variables spéciales (résultats de commandes)
+		if valeur == "_binput" || valeur == "_bcalc" || valeur == "_bread" || valeur == "_bard" || valeur == "_blog" {
+			if val, existe := mesVariables[valeur]; existe {
+				mesVariables[nom] = val
+				fmt.Printf("Variable %s = %s\n", nom, mesVariables[nom])
+				ajouterLog(fmt.Sprintf("Variable assignée: %s = %s", nom, mesVariables[nom]))
 			}
 		} else {
-			value = strings.Trim(value, "\"")
-			variables[key] = replaceVars(value)
-			fmt.Printf("Variable %s = %s\n", key, variables[key])
-			addLog(fmt.Sprintf("Variable créée: %s = %s", key, variables[key]))
+			// Variable normale
+			valeur = strings.Trim(valeur, "\"")
+			mesVariables[nom] = remplacerVariables(valeur)
+			fmt.Printf("Variable %s = %s\n", nom, mesVariables[nom])
+			ajouterLog(fmt.Sprintf("Variable créée: %s = %s", nom, mesVariables[nom]))
 		}
 		return
 	}
 }
 
+// FONCTION PRINCIPALE
+
+// Point d'entrée du programme
 func main() {
+	// Vérifier qu'un fichier a été fourni
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run main.go fichier.brs [args...]")
+		fmt.Println("Usage: go run main.go fichier.brs [arguments...]")
 		return
 	}
 
-	cmdArgs = os.Args
+	// Sauvegarder les arguments de la ligne de commande
+	argumentsCommande = os.Args
 
-	file := os.Args[1]
-	f, err := os.Open(file)
+	// Ouvrir le fichier script
+	fichier := os.Args[1]
+	f, err := os.Open(fichier)
 	if err != nil {
-		fmt.Println("Erreur ouverture :", err)
+		fmt.Println("Erreur d'ouverture du fichier:", err)
 		return
 	}
 	defer f.Close()
 
+	// Exécuter le script ligne par ligne
 	fmt.Println("=== Exécution du script Bresson ===")
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		runLine(scanner.Text())
+		executerLigne(scanner.Text())
 	}
 	fmt.Println("=== Fin d'exécution ===")
 }
