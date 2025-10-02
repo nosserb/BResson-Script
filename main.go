@@ -645,10 +645,10 @@ func main() {
 	defer f.Close()
 
 	// Exécuter le script ligne par ligne
-	fmt.Println("=== Exécution du script Bresson ===")
+	fmt.Println("....")
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		executerLigne(scanner.Text())
 	}
-	fmt.Println("=== Fin d'exécution ===")
+	fmt.Println("....")
 }
